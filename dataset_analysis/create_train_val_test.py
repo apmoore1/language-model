@@ -108,12 +108,30 @@ if __name__ == '__main__':
     If rewrite flag is given then the data will be rewritten but not the same 
     reviews will be written to each train, val, and test files as the reviews 
     are randomly chosen.
+
+    This script also ensures that the train, validation, and test sets are 
+    split with 84%, 8%, 8% reviews respectively from the whole dataset.
+
+    Optional choices are the following:
+    1. --min_token_count -- Minimum number of tokens that have to be in a 
+       review. This is based on whitespace tokenisation. We set this to 3.      
+    2. --filter_by_business_ids -- Whether or not to filter the reviews by 
+       business ids. This expects a json file containing a list of business 
+       IDS to filter by. This can be done using the 
+       filter_businesses_by_category.py script
     '''
 
     rewrite_help = "Whether or not to rewrite over the data stored in the "\
                    "train, validation, and test file paths"
     data_dir_help = "Directory to store the train, validation, and test "\
                     "reviews."
+    min_token_count_help = "Minimum number of tokens that have to be in a "\
+                           "review. This is based on whitespace tokenisation. "\
+                           "We set this to 3."
+    bis_filter_help = 'Whether or not to filter the reviews by business ids.'\
+                      ' This expects a json file containing a list of '\
+                      'business IDS to filter by. This can be done using the '\
+                      'filter_businesses_by_category.py script'
 
     parser = argparse.ArgumentParser()
     parser.add_argument("review_data", type=parse_path,
@@ -121,6 +139,10 @@ if __name__ == '__main__':
     parser.add_argument("--rewrite", help=rewrite_help, action="store_true")
     parser.add_argument("data_dir", type=parse_path, 
                         help=data_dir_help)
+    parser.add_argument("--min_token_count", help=min_token_count_help, 
+                        type=int)
+    parser.add_argument("--filter_by_business_ids", type=parse_path, 
+                        help=bis_filter_help)
     args = parser.parse_args()
 
     data_dir_fp = args.data_dir
@@ -136,40 +158,65 @@ if __name__ == '__main__':
     if data_splits_exist and not args.rewrite:
         print(end_statement + ' and have not been re-written')
     else:
-        expected_num_reviews = 6685900
-        test_val_num_reviews = math.ceil(expected_num_reviews * 0.08)
-        review_counts = set([i for i in range(expected_num_reviews)])
+        if not args.filter_by_business_ids:
+            expected_num_reviews = 6685900
+            test_val_num_reviews = math.ceil(expected_num_reviews * 0.08)
+            review_counts = set([i for i in range(expected_num_reviews)])
+        
 
-        test_counts = set(random.sample(review_counts, test_val_num_reviews))
-        review_counts = review_counts.difference(test_counts)
-        val_counts = set(random.sample(review_counts, test_val_num_reviews))
-        train_counts = review_counts.difference(val_counts)
+            test_counts = set(random.sample(review_counts, test_val_num_reviews))
+            review_counts = review_counts.difference(test_counts)
+            val_counts = set(random.sample(review_counts, test_val_num_reviews))
+            train_counts = review_counts.difference(val_counts)
 
-        assert len(test_counts.intersection(val_counts)) == 0
-        assert len(train_counts.intersection(val_counts)) == 0
-        assert len(train_counts.intersection(test_counts)) == 0
+            assert len(test_counts.intersection(val_counts)) == 0
+            assert len(train_counts.intersection(val_counts)) == 0
+            assert len(train_counts.intersection(test_counts)) == 0
 
-        train_ids, val_ids, test_ids = list(), list(), list()
+            train_ids, val_ids, test_ids = list(), list(), list()
 
-        count = 0
-        for _id, review in review_id_data(args.review_data):
+            min_token_count = args.min_token_count
+            count = 0
+            for _id, review in review_id_data(args.review_data):
+                if min_token_count:
+                    tokens = review['text'].split()
+                    if len(tokens) < min_token_count:
+                        continue
+                if count in train_counts:
+                    write_review(train_fp, review)
+                    train_ids.append(_id)
+                elif count in val_counts:
+                    write_review(val_fp, review)
+                    val_ids.append(_id)
+                elif count in test_counts:
+                    write_review(test_fp, review)
+                    test_ids.append(_id)
+                else:
+                    raise ValueError(f'This count {count} is not in any of the '
+                                    'counts, largest possible count value '
+                                    f'{expected_num_reviews - 1}')
+                count += 1
             
-            if count in train_counts:
-                write_review(train_fp, review)
-                train_ids.append(_id)
-            elif count in val_counts:
-                write_review(val_fp, review)
-                val_ids.append(_id)
-            elif count in test_counts:
-                write_review(test_fp, review)
-                test_ids.append(_id)
-            else:
-                raise ValueError(f'This count {count} is not in any of the '
-                                 'counts, largest possible count value '
-                                 f'{expected_num_reviews - 1}')
-            count += 1
-        
-        
-        print(data_stats(len(train_ids), len(val_ids), len(test_ids)))
+            
+            print(data_stats(len(train_ids), len(val_ids), len(test_ids)))
+        else:
+            with args.filter_by_business_ids.open('r') as business_id_file:
+                business_ids = set(json.load(business_id_file))
+
+            train_ids, val_ids, test_ids = list(), list(), list()
+            for _id, review in review_id_data(args.review_data):
+                if review['business_id'] in business_ids:
+                    split = random.choices([1,2,3], weights=[84,8,8])[0]
+                    if split == 1:
+                        write_review(train_fp, review)
+                        train_ids.append(_id)
+                    elif split == 2:
+                        write_review(val_fp, review)
+                        val_ids.append(_id)
+                    elif split == 3:
+                        write_review(test_fp, review)
+                        test_ids.append(_id)
+
+            print(data_stats(len(train_ids), len(val_ids), len(test_ids)))
         print(end_statement)
     
