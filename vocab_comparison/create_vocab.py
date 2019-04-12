@@ -53,6 +53,9 @@ def spacy_tokeniser(text: str) -> List[str]:
 
 
 def get_tokeniser(tokeniser_name: str) -> Callable[[str], List[str]]:
+    '''
+    Given a tokeniser name it will return that tokeniser function.
+    '''
     if tokeniser_name == 'spacy':
         print('Using the spaCy tokeniser')
         return spacy_tokeniser
@@ -64,6 +67,10 @@ def get_tokeniser(tokeniser_name: str) -> Callable[[str], List[str]]:
         
 def create_vocab(text_fp: Path, tokeniser: Callable[[str], List[str]]
                  ) -> Set[str]:
+    '''
+    Given a file that contains just text on each new line it will tokenise that 
+    text and return a Set of all the unique words (tokens).
+    '''
     vocab = set()
     with text_fp.open('r') as text_file:
         for line in text_file:
@@ -73,6 +80,13 @@ def create_vocab(text_fp: Path, tokeniser: Callable[[str], List[str]]
                 for token in tokens:
                     vocab.add(token)
     return vocab
+
+def valid_text_file_name_prefix(prefix_pattern: str, text_file_name: str
+                                ) -> bool:
+    if prefix_pattern:
+        if re.search(rf'^{prefix_pattern}', text_file_name) is None:
+            return False
+    return True
 
 def parse_path(path_string: str) -> Path:
     path_string = Path(path_string).resolve()
@@ -110,13 +124,17 @@ if __name__ == '__main__':
                              ' folder.')
         text_dir: Path = text_fp
         for text_fp in text_dir.iterdir():
-            print('done')
+            if not valid_text_file_name_prefix(file_prefix, text_fp.name):
+                print(f'Not including {text_fp.name}')
+                continue
+            print(f'including {text_fp.name}')
+            vocab = vocab.union(list(create_vocab(text_fp, tokeniser)))
+        vocab = list(vocab)
     else:
-        if file_prefix:
-            if re.search(rf'^{file_prefix}', text_fp.name) is None:
-                raise FileNotFoundError(f'The file prefix `{file_prefix}` given'
-                                        ' does not match the given file name '
-                                        f'`{text_fp.name}`')
+        if not valid_text_file_name_prefix(file_prefix, text_fp.name):
+            raise FileNotFoundError(f'The file prefix `{file_prefix}` given'
+                                    ' does not match the given file name '
+                                    f'`{text_fp.name}`')
         vocab = list(create_vocab(text_fp, tokeniser))
     with vocab_fp.open('w+') as vocab_file:
         json.dump(vocab, vocab_file)
