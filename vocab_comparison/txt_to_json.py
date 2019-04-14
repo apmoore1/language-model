@@ -1,10 +1,12 @@
+import sys
+from pathlib import Path
+if str(Path(__file__, '..', '..').resolve()) not in sys.path:
+    sys.path.append(str(Path(__file__, '..', '..').resolve()))
+
 import argparse
 import json
-from pathlib import Path
 
-def parse_path(path_string: str) -> Path:
-    path_string = Path(path_string).resolve()
-    return path_string
+from helper import parse_path
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

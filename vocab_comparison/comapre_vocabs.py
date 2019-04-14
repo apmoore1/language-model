@@ -1,16 +1,18 @@
+import sys
+from pathlib import Path
+if str(Path(__file__, '..', '..').resolve()) not in sys.path:
+    sys.path.append(str(Path(__file__, '..', '..').resolve()))
+
 import argparse
 import json
-from pathlib import Path
 from typing import Set
+
+from helper import parse_path
 
 def load_vocab(vocab_fp: Path) -> Set[str]:
     with vocab_fp.open('r') as vocab_file:
         vocab = json.load(vocab_file)
     return set(vocab)
-
-def parse_path(path_string: str) -> Path:
-    path_string = Path(path_string).resolve()
-    return path_string
 
 if __name__ == '__main__':
     '''

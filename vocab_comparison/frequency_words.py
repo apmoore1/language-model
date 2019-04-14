@@ -1,15 +1,13 @@
+import sys
+from pathlib import Path
+if str(Path(__file__, '..', '..').resolve()) not in sys.path:
+    sys.path.append(str(Path(__file__, '..', '..').resolve()))
+
 import argparse
 import json
-from pathlib import Path
 from collections import Counter
-import re
 
-def valid_text_file_name_prefix(prefix_pattern: str, text_file_name: str
-                                ) -> bool:
-    if prefix_pattern:
-        if re.search(rf'^{prefix_pattern}', text_file_name) is None:
-            return False
-    return True
+from helper import parse_path, valid_text_file_name_prefix
 
 def read_text_file_update_counter(text_fp: Path, vocab_counter: Counter
                                   ) -> Counter:
@@ -20,11 +18,6 @@ def read_text_file_update_counter(text_fp: Path, vocab_counter: Counter
                 tokens = str.split(line)
                 vocab_counter.update(tokens)
     return vocab_counter
-
-
-def parse_path(path_string: str) -> Path:
-    path_string = Path(path_string).resolve()
-    return path_string
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
