@@ -91,6 +91,7 @@ command:
 ``` bash
 allennlp evaluate --cuda-device -1 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 512, "batch_size": 128 }}}' transformer-elmo-2019.01.10.tar.gz 1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/news.en-00000-of-00100
 ```
+Did not find it any quicker to have more of the data in memory nor did the perplexity measure change.
 
 ## Fine tuning the Transformer ELMo model
 In this section we show how you can fine tune the Transformer ELMo model to other domains and mediums.
@@ -107,8 +108,12 @@ python fine_tune_lm/split_dataset.py ../yelp/splits/filtered_split_train.txt ../
 ```
 Where `../yelp/splits/filtered_split_train.txt` is the file that stores all of the training data and `../yelp/splits/filtered_train_dir/` is the new directory that will store all of the training data but over 40 files. 40 is just an arbitary number any number can be chosen.
 
+So far I have not found it any quick to train it in this manner, it is just as quick to train it without having to split the dataset first.
+
 To train the model run the following command (This will take a long time):
 ```
 allennlp train fine_tune_lm/training_configs/yelp_lm_config.json -s ../yelp_language_model
 ```
 Where `../yelp_language_model` is the directory that will save the language model to.
+
+We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quicker through pre-training.
