@@ -5,22 +5,11 @@ if str(Path(__file__, '..', '..').resolve()) not in sys.path:
 
 import argparse
 import json
-from typing import Set, Iterable, Optional, List, Callable
+from typing import Set, List, Callable
 
 from bella.data_types import TargetCollection
 
-from helper import parse_path, get_tokeniser
-
-def load_dataset_splits(directory: Path, dataset_name: str,
-                        split_names: Optional[List[str]] = None
-                        ) -> Iterable[TargetCollection]:
-    split_names = split_names or ['Train', 'Val', 'Test']
-    for split_name in split_names:
-        data_split_fp = Path(directory, f'{dataset_name} {split_name}').resolve()
-        if not data_split_fp.exists():
-            raise FileNotFoundError('Cannot find the following TDSA data '
-                                    f'split file {data_split_fp}')
-        yield TargetCollection.load_from_json(data_split_fp)
+from helper import parse_path, get_tokeniser, load_dataset_splits
 
 def get_tokens(data: TargetCollection, tokeniser: Callable[[str], List[str]],
                field: str = 'text') -> Set[str]:

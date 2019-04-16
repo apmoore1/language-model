@@ -5,11 +5,9 @@ if str(Path(__file__, '..', '..').resolve()) not in sys.path:
 
 import argparse
 from collections import Counter
-from typing import Optional, Iterable, List
+from typing import List
 
-from bella.data_types import TargetCollection
-
-from helper import parse_path, get_tokeniser
+from helper import parse_path, get_tokeniser, load_dataset_splits
 
 def load_vocab(vocab_fp: Path) -> List[str]:
     vocab = []
@@ -19,17 +17,6 @@ def load_vocab(vocab_fp: Path) -> List[str]:
             if line:
                 vocab.append(line)
     return vocab
-
-def load_dataset_splits(directory: Path, dataset_name: str,
-                        split_names: Optional[List[str]] = None
-                        ) -> Iterable[TargetCollection]:
-    split_names = split_names or ['Train', 'Val', 'Test']
-    for split_name in split_names:
-        data_split_fp = Path(directory, f'{dataset_name} {split_name}').resolve()
-        if not data_split_fp.exists():
-            raise FileNotFoundError('Cannot find the following TDSA data '
-                                    f'split file {data_split_fp}')
-        yield TargetCollection.load_from_json(data_split_fp)
 
 if __name__ == '__main__':
     tdsa_name_help = 'Name of the TDSA dataset that you wish the vocab will be created for'

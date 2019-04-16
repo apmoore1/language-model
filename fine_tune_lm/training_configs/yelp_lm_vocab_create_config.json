@@ -1,0 +1,135 @@
+{
+    "dataset_reader": {
+        "type": "multiprocess",
+        "base_reader": {
+            "type": "simple_language_modeling",
+            "end_tokens": [
+                "</S>"
+            ],
+            "max_sequence_length": 500,
+            "start_tokens": [
+                "<S>"
+            ],
+            "token_indexers": {
+                "token_characters": {
+                    "type": "elmo_characters"
+                },
+                "tokens": {
+                    "type": "single_id"
+                }
+            },
+            "tokenizer": {
+                "type": "word",
+                "word_splitter": {
+                    "type": "just_spaces"
+                }
+            }
+        },
+        "num_workers": 1,
+        "output_queue_size": 1000
+    },
+    "iterator": {
+        "type": "multiprocess",
+        "base_iterator": {
+            "type": "bucket",
+            "batch_size": 1024,
+            "max_instances_in_memory": 32768,
+            "maximum_samples_per_batch": [
+                "num_tokens",
+                2000
+            ],
+            "sorting_keys": [
+                [
+                    "source",
+                    "num_tokens"
+                ]
+            ]
+        },
+        "num_workers": 1,
+        "output_queue_size": 500
+    },
+    "model": {
+        "type": "bidirectional-language-model",
+        "contextualizer": {
+            "type": "bidirectional_language_model_transformer",
+            "dropout": 0.1,
+            "hidden_dim": 2048,
+            "input_dim": 512,
+            "input_dropout": 0.1,
+            "num_layers": 6
+        },
+        "dropout": 0.1,
+        "num_samples": 8192,
+        "sparse_embeddings": true,
+        "text_field_embedder": {
+            "allow_unmatched_keys": true,
+            "token_embedders": {
+                "token_characters": {
+                    "type": "character_encoding",
+                    "embedding": {
+                        "embedding_dim": 16,
+                        "num_embeddings": 262
+                    },
+                    "encoder": {
+                        "type": "cnn-highway",
+                        "activation": "relu",
+                        "do_layer_norm": true,
+                        "embedding_dim": 16,
+                        "filters": [
+                            [
+                                1,
+                                32
+                            ],
+                            [
+                                2,
+                                32
+                            ],
+                            [
+                                3,
+                                64
+                            ],
+                            [
+                                4,
+                                128
+                            ],
+                            [
+                                5,
+                                256
+                            ],
+                            [
+                                6,
+                                512
+                            ],
+                            [
+                                7,
+                                1024
+                            ]
+                        ],
+                        "num_highway": 2,
+                        "projection_dim": 512,
+                        "projection_location": "after_highway"
+                    }
+                }
+            }
+        },
+        "initializer": [["_text_field_embedder|_contextualizer", 
+            {"type": "pretrained", "weights_file_path": "../transformer_unpacked/data/weights.th"}
+           ]]
+    },
+    "train_data_path": "../yelp/splits/filtered_train_dir/filtered_split_train.txt",
+    "trainer": {
+        "cuda_device": [0],
+        "learning_rate_scheduler": {
+            "type": "noam",
+            "model_size": 512,
+            "warmup_steps": 6000
+        },
+        "num_epochs": 1,
+        "optimizer": {
+            "type": "dense_sparse_adam"
+        }
+    },
+    "vocabulary": {
+        "min_count": {"tokens": 3}
+    }
+}

@@ -49,18 +49,56 @@ This should create all of the splits that we will use throughout the normal expe
 The [Transformer ELMo model](https://allennlp.org/elmo) that came from the following [paper](https://aclweb.org/anthology/D18-1179) was trained on the 1 Billion word corpus that can be downloaded from [here](http://www.statmt.org/lm-benchmark/1-billion-word-language-modeling-benchmark-r13output.tar.gz) and a good tutorial about the model can be found [here](https://github.com/allenai/allennlp/blob/master/tutorials/how_to/training_transformer_elmo.md). As the downloaded 1 billion corpus has already been tokenised and the Transformer ELMo model that has been downloaded comes with a fixed output vocabulary, we show that the vocabularly comes from only the training corpus and from words that have a frequency of at least 3 in the training corpus. We also find that not all the words in the test corpus are in the training corpus of the 1 billion word corpus.
 
 NOTE: The model's vocabularly comes from un-tarring `transformer-elmo-2019.01.10.tar.gz` the model Transformer ELMo model download and going into the vocab folder.
+NOTE: It is required to un-tar the `transformer-elmo-2019.01.10.tar.gz` as the vocabulary is required and the weights therefore we assume you have un-tared it into the following folder `../transformer_unpacked`
 
 To see how we discovered how the Transformer ELMo model output vocabularly was discovered and how this vocabularly MORE IMPORTANTLY overlaps with the TDSA data and the TDSA target words look at the following [mark down file](./vocab_comparison/README.md)
 
 
 
-## Yelp Data
+## Yelp Data and filtering it
 
 The [Yelp dataset](https://www.yelp.com/dataset) was accessed on the week starting the 1st of April 2019, this is important as Yelp releases a new dataset every year. We only used reviews that review businesses from the following categories `restaurants` `restaurant` `restaurants,` this was to ensure that the domain of the reviews were similar to the restaurant review domain (some reviews are about hospitals etc). To filter the reviews we ran the following command:
 ``` bash
-python YELP_REVIEW_DIR/business.json business_filter_ids.json 'restaurants restaurant restaurants,'
+python dataset_analysis/filter_businesses_by_category.py YELP_REVIEW_DIR/business.json business_filter_ids.json 'restaurants restaurant restaurants,'
 ```
 Where `YELP_REVIEW_DIR` is the directory that contains the downloaded [Yelp dataset](https://www.yelp.com/dataset), `business_filter_ids.json` is the json file you want to store the filtered business ids that will only contain business ids that have come from the restaurant domain based on the 3rd argument `restaurants restaurant restaurants,` which specifies the categories the Yelp business must be within to be allowed in the `business_filter_ids.json` file.
+
+### Converting the Yelp data into sentences and tokens.
+Once we have the filtered data we are only interested in the text of the data as we want to fine tune the [Transformer ELMo model](https://allennlp.org/elmo) from the news corpus data it was original trained on to restaurant reviews. This is because restaurant reviews use a slightly different vocabularly (for examples see [this](./vocab_comparison/README.md)) and more than likely a different language style to news data. 
+
+To convert the split Yelp reviews into split Yelp data that has been tokenised by spacy and only contains one sentence per line (same format as 1 Billion word corpus) run the following command:
+``` bash
+python dataset_analysis/to_sentences_tokens.py ../yelp/splits yelp
+```
+This will create three more files within the `../yelp/splits` directory; `split_train.txt`, `split_val.txt`, `split_test.txt`. This dataset will now be called **yelp sentences**
+
+## Data Staistics of the language model datasets
+### 1 Billion word corpus
+As the original data the [Transformer ELMo model](https://allennlp.org/elmo) was trained on shuffled sentence from the one billion word corpus we wanted to see what the data statistics of this corpus was e.g. Max, Mean, Minimum sentence lengths etc therefore this can be seen by running the following command:
+``` bash
+python dataset_analysis/data_stats.py ../1-billion-word-language-modeling-benchmark-r13output/ billion_word_corpus --sentence_length_distribution ./images/sentence_distributions/1_billion_word_corpus.png
+```
+As we can seen the `max`, `mean`, and `min` token counts per sentence are 2818, 25.36, and 1 respectively. We can also see that very few sentences only contain one token (182) and further more very few contain only 2 tokens (19516). We can also see that the number of tokens that occur at least three times for the combined TRAIN and TEST set is 797,965 showing that the diversity in tokens is quiet large.
+
+NOTE: `./images/sentence_distributions/1_billion_word_corpus.png` is just a graph of the sentence distribution.
+
+### Yelp sentences
+
+``` bash
+python dataset_analysis/data_stats.py ../yelp/splits yelp_sentences --sentence_length_distribution ./images/sentence_distributions/yelp.png
+```
+As we can seen the `max`, `mean`, and `min` token counts per sentence are 937, 15.54, and 1 respectively. The fact that the sentences are shorter in general compared to the 1 billion word corpus could be the domain or the spacy sentence splitter. We can also see that the diversity of the tokens is smaller compared to the 1 billion word corpus as the number of tokens that occur at least three times in all of the data splits is only 260,150 compared to 797,965. Lastly we can also see that there are a lot more sentences with only 1 or 2 words in them of which I think this is most likely due to the sentence splitter and some what reviews in general e.g. review that just say good, great etc.
+
+## Yelp sentence filtering based on sentence length
+
+Based on these data statistics we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 500 due to GPU memory requirements. To do this run the following command:
+
+``` bash
+python dataset_analysis/filter_by_sentence_length.py ../yelp/splits yelp_sentences 3 500
+```
+
+This will create three more files within the `../yelp/splits` directory; `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt`. These train, validation, and test splits are the final dataset that we will use to fine tune the Transformer ELMo model on for the restaurant review domain.
+
 
 ## How to run the Transformer ELMo model
 
@@ -71,13 +109,23 @@ command:
 allennlp evaluate --cuda-device -1 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 512, "batch_size": 128 }}}' transformer-elmo-2019.01.10.tar.gz 1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/news.en-00000-of-00100
 ```
 
-## What is the vocab comparison folder
-The vocab comparison folder contains script that will create a `vocab.json` file (or whatever you would like to call it) that will contain a list of all vocabulary terms given a corpus to create the vocabularly from and a tokeniser to `create/split` the words within the corpus.
-
-To create a vocabulary file from the 1 Billion word held out corpus:
+## Fine tuning the Transformer ELMo model
+In this section we show how you can fine tune the Transformer ELMo model to other domains and mediums.
+### Yelp Restaurant Review dataset
+Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt` from the previous sections, we will use these datasets to fine tune the model. First we must create a new output vocabulary for the Transformer ELMo model to do this easily use the following command:
 ``` bash
-python create_vocab.py 1-Billion-Held-Out-Corpus-File-Path Vocab-File-Path whitespace
-python vocab_comparison/create_vocab.py ../1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/news.en-00000-of-00100 ../vocab_1_billion_held_out whitespace
-
+python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/yelp_lm_vocab_create_config.json ../yelp_lm_vocab
 ```
-Given the location of the 1 Billion word held out corpus it will create the json vocabulary file at the given path using the whitespace tokeniser.
+Where `../yelp_lm_vocab` is a new directory that stores only the vocabulary files, of which the vocabulary that will be used can be found here `../yelp_lm_vocab/tokens.txt`.
+
+To make the training process quicker it is advised that you split the training corpus up into serveal files this can be done using the following command:
+``` bash
+python fine_tune_lm/split_dataset.py ../yelp/splits/filtered_split_train.txt ../yelp/splits/filtered_train_dir/ 40
+```
+Where `../yelp/splits/filtered_split_train.txt` is the file that stores all of the training data and `../yelp/splits/filtered_train_dir/` is the new directory that will store all of the training data but over 40 files. 40 is just an arbitary number any number can be chosen.
+
+To train the model run the following command (This will take a long time):
+```
+allennlp train fine_tune_lm/training_configs/yelp_lm_config.json -s ../yelp_language_model
+```
+Where `../yelp_language_model` is the directory that will save the language model to.
