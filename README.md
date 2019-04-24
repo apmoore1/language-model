@@ -72,15 +72,56 @@ python dataset_analysis/to_sentences_tokens.py ../yelp/splits yelp
 ```
 This will create three more files within the `../yelp/splits` directory; `split_train.txt`, `split_val.txt`, `split_test.txt`. This dataset will now be called **yelp sentences**
 
-## Yelp sentence filtering based on sentence length
+## Yelp sentence filtering based on sentence length and the similarity to the TDSA dataset
+### Filtering
 
-Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 500 due to GPU memory requirements. To do this run the following command:
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 40 as there are so few review sentences greater than this (2.48%). To do this run the following command:
 
 ``` bash
-python dataset_analysis/filter_by_sentence_length.py ../yelp/splits yelp_sentences 3 500
+python dataset_analysis/filter_by_sentence_length.py ../yelp/splits yelp_sentences 3 40
 ```
 
-This will create three more files within the `../yelp/splits` directory; `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt`. These train, validation, and test splits are the final dataset that we will use to fine tune the Transformer ELMo model on for the restaurant review domain.
+This will create three more files within the `../yelp/splits` directory; `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt`. These train, validation, and test splits are the final dataset that we will use to fine tune the Transformer ELMo model on for the restaurant review domain. Now we can re-run the data statistics to see the proportions and distribution of token and sentence length frequencies of the new filtered yelp training, validation, and test data:
+```
+python dataset_analysis/data_stats.py ../yelp/splits/filtered_split_train.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/yelp_filtered_training.png
+python dataset_analysis/data_stats.py ../yelp/splits/filtered_split_val.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/yelp_filtered_validation.png
+python dataset_analysis/data_stats.py ../yelp/splits/filtered_split_test.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/yelp_filtered_test.png
+```
+We find that the:
+1. Training set has a mean sentence length of 14.78 (8.02) with 27,286,698 sentences and 218,903 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_training.png).
+2. Validation set has a mean sentence length of 14.78 (8.01) with 2,606,292 sentences and 69,106 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_validation.png).
+3. Test set has a mean sentence length of 14.77 (8.01) with 2,602,337 sentences and 68,588 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_test.png).
+As we can see the sentence lengths and standard devations are very similar across the splits. 
+
+### Similarity of the Yelp training data to the TDSA Restaurant data.
+We want to compare the words that are in the Yelp Training data to those TDSA restaurant dataset. Therefore we are going to follow similar steps to those used in analysising the vocabulary of the Transformer ELMo and the TDSA data which can be found [here](./vocab_comparison/README.md). First we need to create a vocabulary for the Yelp Training data:
+``` bash
+python vocab_comparison/create_vocab.py ../yelp/splits/filtered_split_train.txt ../vocab_test_files/yelp_filtered_train.json whitespace
+```
+Now the vocabulary is created and assuming you have done the steps in [here](./vocab_comparison/README.md) we want to compare the restaurant TDSA
+``` bash
+python vocab_comparison/comapre_vocabs.py ../vocab_test_files/restaurant_tdsa.json ../vocab_test_files/yelp_filtered_train.json ../vocab_test_files/tdsa_diff_between_yelp_train_and_restaurant.txt --not_symmetric
+```
+We find that there are 104 words that are not in the Yelp restaurant train dataset but are in the TDSA dataset, now lets look at difference in target words specifically:
+``` bash
+python vocab_comparison/comapre_vocabs.py ../vocab_test_files/restaurant_target_tdsa.json ../vocab_test_files/yelp_filtered_train.json ../vocab_test_files/tdsa_diff_between_yelp_train_and_restaurant_targets.txt --not_symmetric
+python vocab_comparison/targets_affected.py restaurant ../vocab_test_files/tdsa_diff_between_yelp_train_and_restaurant_targets.txt spacy tdsa_data/splits/
+python vocab_comparison/targets_affected.py restaurant ../vocab_test_files/tdsa_diff_between_yelp_train_and_restaurant_targets.txt spacy tdsa_data/splits/ --unique
+```
+We find that there are 16 target words not in the Yelp training data and that these 16 target words affect only 16 samples out of the 4722 samples in the whole of the restaurant TDSA (train, validation, and test sets). Examples of these words:
+``` python
+['capex', 'AT MOSHPHERE', 'Guacamole+shrimp appetizer', 'clams oreganta', 'yellowfun tuna'] 
+```
+
+#### With the models actual vocabulary
+``` bash
+python vocab_comparison/txt_to_json.py ../yelp_lm_vocab/tokens.txt ../vocab_test_files/yelp_train_model.json 
+python vocab_comparison/comapre_vocabs.py ../vocab_test_files/restaurant_tdsa.json ../vocab_test_files/yelp_train_model.json ../vocab_test_files/tdsa_diff_between_yelp_train_model_and_restaurant.txt --not_symmetric
+python vocab_comparison/comapre_vocabs.py ../vocab_test_files/restaurant_target_tdsa.json ../vocab_test_files/yelp_train_model.json ../vocab_test_files/tdsa_diff_between_yelp_train_model_and_restaurant_targets.txt --not_symmetric
+python vocab_comparison/targets_affected.py restaurant ../vocab_test_files/tdsa_diff_between_yelp_train_model_and_restaurant_targets.txt spacy tdsa_data/splits/
+python vocab_comparison/targets_affected.py restaurant ../vocab_test_files/tdsa_diff_between_yelp_train_model_and_restaurant_targets.txt spacy tdsa_data/splits/ --unique
+```
+We find that there are 156 words that are not in the Yelp training vocabulary but are in the TDSA dataset of which 25 of these are target words that affect 26 targets and 26 samples of he 4722 samples across training, validation, and test sets.
 
 
 ## How to run the Transformer ELMo model
@@ -101,7 +142,7 @@ Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.t
 python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/yelp_lm_vocab_create_config.json ../yelp_lm_vocab
 ```
 Where `../yelp_lm_vocab` is a new directory that stores only the vocabulary files, of which the vocabulary that will be used can be found here `../yelp_lm_vocab/tokens.txt`.
-
+#### I have not found this to be true
 To make the training process quicker it is advised that you split the training corpus up into serveal files this can be done using the following command:
 ``` bash
 python fine_tune_lm/split_dataset.py ../yelp/splits/filtered_split_train.txt ../yelp/splits/filtered_train_dir/ 40
@@ -109,12 +150,12 @@ python fine_tune_lm/split_dataset.py ../yelp/splits/filtered_split_train.txt ../
 Where `../yelp/splits/filtered_split_train.txt` is the file that stores all of the training data and `../yelp/splits/filtered_train_dir/` is the new directory that will store all of the training data but over 40 files. 40 is just an arbitary number any number can be chosen.
 
 So far I have not found it any quick to train it in this manner, it is just as quick to train it without having to split the dataset first.
-
+#### Train model
 To train the model run the following command (This will take a long time):
 ```
-allennlp train fine_tune_lm/training_configs/yelp_lm_config.json -s ../yelp_language_model
+allennlp train fine_tune_lm/training_configs/yelp_lm_config_alt.json -s ../yelp_language_model_save_large
 ```
-Where `../yelp_language_model` is the directory that will save the language model to.
+Where `../yelp_language_model_save_large` is the directory that will save the language model to.
 
 We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quicker through pre-training.
 
