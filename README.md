@@ -142,21 +142,27 @@ Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.t
 python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/yelp_lm_vocab_create_config.json ../yelp_lm_vocab
 ```
 Where `../yelp_lm_vocab` is a new directory that stores only the vocabulary files, of which the vocabulary that will be used can be found here `../yelp_lm_vocab/tokens.txt`.
-#### I have not found this to be true
-To make the training process quicker it is advised that you split the training corpus up into serveal files this can be done using the following command:
-``` bash
-python fine_tune_lm/split_dataset.py ../yelp/splits/filtered_split_train.txt ../yelp/splits/filtered_train_dir/ 40
-```
-Where `../yelp/splits/filtered_split_train.txt` is the file that stores all of the training data and `../yelp/splits/filtered_train_dir/` is the new directory that will store all of the training data but over 40 files. 40 is just an arbitary number any number can be chosen.
 
-So far I have not found it any quick to train it in this manner, it is just as quick to train it without having to split the dataset first.
 #### Train model
-To train the model run the following command (This will take a long time):
+To train the model run the following command (This will take a long time around 49 hours on a 1060 6GB GPU):
 ```
-allennlp train fine_tune_lm/training_configs/yelp_lm_config_alt.json -s ../yelp_language_model_save_large
+allennlp train fine_tune_lm/training_configs/yelp_lm_config.json -s ../yelp_language_model_save_large
 ```
 Where `../yelp_language_model_save_large` is the directory that will save the language model to.
 
-We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quicker through pre-training.
+We got a perplexity score of 24.78 perplexity which is a loss of 3.21.
+
+We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quickily through pre-training.
+
+#### Evaluate the model
+To evaluate the model we shall use the Yelp filterted test split which you should be able to find here if you followed the previous steps `../yelp/splits/filtered_split_test.txt` and to evaluate you run the following command (This again will take around 3 hours 25 minutes on a 1060 6GB GPU):
+``` bash
+allennlp evaluate --cuda-device 0 ../yelp_language_model_save_large/model.tar.gz ../yelp/splits/filtered_split_test.txt
+```
+We achieved a perplexity of 24.53 which is a loss of 3.20 (3.207513492262822) which is almost identical to the training loss. We now compare that to the non-fine tuned model which was trained on the 1 billion word corpus which came from news data, to do this run the following command:
+``` bash
+allennlp evaluate --cuda-device 0 ../transformer-elmo-2019.01.10.tar.gz ../yelp/splits/filtered_split_test.txt
+```
+This will take longer to run () as it has a much larger vocabulary therefore a much large softmax layer to compute within the neural network.
 
 Other suggestion for training better with a pre-trained model would be to use something like the [ULMFit model](https://arxiv.org/pdf/1801.06146.pdf) as currently we are using a learning rate schduler that is similar in warm up and decreasing but it does not care about the different layers i.e. does not freeze any of the layers at different epochs nor does it have a different learning rate for different layers all of this could be important for us. We have also not looked at the best learning rate which we could do through [fine learning rate](https://allenai.github.io/allennlp-docs/api/allennlp.commands.find_learning_rate.html?highlight=learning#module-allennlp.commands.find_learning_rate) which is based on the training data and batches. To find the number of parameter groups for the ULMFit model see [this](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#sphx-glr-beginner-blitz-neural-networks-tutorial-py)
