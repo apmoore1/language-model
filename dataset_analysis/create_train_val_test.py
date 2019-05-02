@@ -10,17 +10,25 @@ def parse_path(path_string: str) -> Path:
     path_string = Path(path_string).resolve()
     return path_string
 
-def review_id_data(yelp_review_fp: Path) -> Iterable[Tuple[str, Dict[str, Any]]]:
+def review_id_data(review_fp: Path, dataset_name: str
+                   ) -> Iterable[Tuple[str, Dict[str, Any]]]:
     '''
     Given a file path to the Yelp review data, it will generate for each 
     review the ID and a dictionary of all the review data e.g. text, user_id, 
     stars etc.
     '''
-    with yelp_review_fp.open('r') as review_data:
-        for line in review_data:
-            review = json.loads(line)
-            review_id = review['review_id']
-            yield review_id, review
+    if dataset_name == 'yelp':
+        with review_fp.open('r') as review_data:
+            for line in review_data:
+                review = json.loads(line)
+                review_id = review['review_id']
+                yield review_id, review
+    else:
+        with review_fp.open('r') as review_data:
+            for index, line in enumerate(review_data):
+                review = eval(line)
+                review_id = review['reviewerID'] + review['asin'] + str(index)
+                yield review_id, review
 
 #def review_id_tokens(yelp_review_fp: Path, 
 #                     tokeniser: Callable[[str], List[str]],
@@ -139,11 +147,14 @@ if __name__ == '__main__':
     parser.add_argument("--rewrite", help=rewrite_help, action="store_true")
     parser.add_argument("data_dir", type=parse_path, 
                         help=data_dir_help)
+    parser.add_argument('dataset_name', type=str, choices=['yelp', 'amazon'])
     parser.add_argument("--min_token_count", help=min_token_count_help, 
                         type=int)
     parser.add_argument("--filter_by_business_ids", type=parse_path, 
                         help=bis_filter_help)
     args = parser.parse_args()
+
+    dataset_name = args.dataset_name
 
     data_dir_fp = args.data_dir
     data_dir_fp.mkdir(parents=True, exist_ok=True)
@@ -159,7 +170,10 @@ if __name__ == '__main__':
         print(end_statement + ' and have not been re-written')
     else:
         if not args.filter_by_business_ids:
-            expected_num_reviews = 6685900
+            if args.dataset_name == 'yelp':
+                expected_num_reviews = 6685900
+            else:
+                expected_num_reviews = 1689188
             test_val_num_reviews = math.ceil(expected_num_reviews * 0.08)
             review_counts = set([i for i in range(expected_num_reviews)])
         
@@ -177,7 +191,7 @@ if __name__ == '__main__':
 
             min_token_count = args.min_token_count
             count = 0
-            for _id, review in review_id_data(args.review_data):
+            for _id, review in review_id_data(args.review_data, dataset_name):
                 if min_token_count:
                     tokens = review['text'].split()
                     if len(tokens) < min_token_count:
@@ -204,7 +218,7 @@ if __name__ == '__main__':
                 business_ids = set(json.load(business_id_file))
 
             train_ids, val_ids, test_ids = list(), list(), list()
-            for _id, review in review_id_data(args.review_data):
+            for _id, review in review_id_data(args.review_data, dataset_name):
                 if review['business_id'] in business_ids:
                     split = random.choices([1,2,3], weights=[84,8,8])[0]
                     if split == 1:

@@ -123,6 +123,32 @@ python vocab_comparison/targets_affected.py restaurant ../vocab_test_files/tdsa_
 ```
 We find that there are 156 words that are not in the Yelp training vocabulary but are in the TDSA dataset of which 25 of these are target words that affect 26 targets and 26 samples of he 4722 samples across training, validation, and test sets.
 
+## Amazon data
+The amazon electronics data can be downloaded from [here](http://jmcauley.ucsd.edu/data/amazon/) we used the 5 core 1,689,188 reviews dataset. Once downloaded and un-compresed this is then put into it's own directory at `../amazon` and therefore the reviews can be accessed from the following path `../amazon/Electronics_5.json` (downloaded on the 2nd of May).
+``` bash
+python dataset_analysis/create_train_val_test.py ../amazon/Electronics_5.json ../amazon/ amazon
+```
+Number of training reviews 1418916(0.8399988633591998%)
+Number of validation reviews 135136(0.0800005683204001%)
+Number of test reviews 135136(0.0800005683204001%)
+``` bash
+python dataset_analysis/to_sentences_tokens.py ../amazon amazon
+```
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 40 as there are so few review sentences greater than this (2.48%). To do this run the following command:
+``` bash
+python dataset_analysis/filter_by_sentence_length.py ../amazon yelp_sentences 3 50
+```
+
+```
+python dataset_analysis/data_stats.py ../amazon/filtered_split_train.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/amazon_filtered_training.png
+python dataset_analysis/data_stats.py ../amazon/filtered_split_val.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/amazon_filtered_validation.png
+python dataset_analysis/data_stats.py ../amazon/filtered_split_test.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/amazon_filtered_test.png
+```
+We find that the:
+1. Training set has a mean sentence length of 18.06 (9.81) with 9,580,995 sentences and 182,900 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_training.png).
+2. Validation set has a mean sentence length of 18.03 (9.81) with 907,343 sentences and 47,255 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_validation.png).
+3. Test set has a mean sentence length of 18.07 (9.83) with 905,555 sentences and 47,178 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_test.png).
+As we can see the sentence lengths and standard devations are very similar across the splits. 
 
 ## How to run the Transformer ELMo model
 
@@ -136,6 +162,25 @@ Did not find it any quicker to have more of the data in memory nor did the perpl
 
 ## Fine tuning the Transformer ELMo model
 In this section we show how you can fine tune the Transformer ELMo model to other domains and mediums.
+
+### Amazon Review dataset
+Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt` from the previous sections, we will use these datasets to fine tune the model. First we must create a new output vocabulary for the Transformer ELMo model to do this easily use the following command:
+``` bash
+python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/amazon_lm_vocab_create_config.json ../amazon_lm_vocab
+```
+Where `../amazon_lm_vocab` is a new directory that stores only the vocabulary files, of which the vocabulary that will be used can be found here `../amazon_lm_vocab/tokens.txt`.
+
+#### Train model
+To train the model run the following command (This will take a long time around 49 hours on a 1060 6GB GPU):
+```
+allennlp train fine_tune_lm/training_configs/amazon_lm_config.json -s ../amazon_language_model_save_large
+```
+Where `../amazon_language_model_save_large` is the directory that will save the language model to.
+
+We got a perplexity score of 24.78 perplexity which is a loss of 3.21.
+
+We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quickily through pre-training.
+
 ### Yelp Restaurant Review dataset
 Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt` from the previous sections, we will use these datasets to fine tune the model. First we must create a new output vocabulary for the Transformer ELMo model to do this easily use the following command:
 ``` bash
@@ -161,8 +206,10 @@ allennlp evaluate --cuda-device 0 ../yelp_language_model_save_large/model.tar.gz
 ```
 We achieved a perplexity of 24.53 which is a loss of 3.20 (3.207513492262822) which is almost identical to the training loss. We now compare that to the non-fine tuned model which was trained on the 1 billion word corpus which came from news data, to do this run the following command:
 ``` bash
-allennlp evaluate --cuda-device 0 ../transformer-elmo-2019.01.10.tar.gz ../yelp/splits/filtered_split_test.txt
+allennlp evaluate --cuda-device -1 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 300], "max_instances_in_memory": 16384, "batch_size": 512 }}}' ../transformer-elmo-2019.01.10.tar.gz ../yelp/splits/filtered_split_test.txt
 ```
-This will take longer to run () as it has a much larger vocabulary therefore a much large softmax layer to compute within the neural network.
+This will take longer to run (10 hours 45 minutes on a 1060 6GB GPU) as it has a much larger vocabulary therefore a much large softmax layer to compute within the neural network. We got a loss of 4.61 (4.612278219667751) which is a perplexity score of 100.71. 
+
+As we can see fine tunning to the dataset has made large difference with respect to the language model score.
 
 Other suggestion for training better with a pre-trained model would be to use something like the [ULMFit model](https://arxiv.org/pdf/1801.06146.pdf) as currently we are using a learning rate schduler that is similar in warm up and decreasing but it does not care about the different layers i.e. does not freeze any of the layers at different epochs nor does it have a different learning rate for different layers all of this could be important for us. We have also not looked at the best learning rate which we could do through [fine learning rate](https://allenai.github.io/allennlp-docs/api/allennlp.commands.find_learning_rate.html?highlight=learning#module-allennlp.commands.find_learning_rate) which is based on the training data and batches. To find the number of parameter groups for the ULMFit model see [this](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#sphx-glr-beginner-blitz-neural-networks-tutorial-py)

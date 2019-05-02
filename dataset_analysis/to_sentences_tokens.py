@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument("data_dir", type=helper.parse_path, 
                         help=data_dir_help)
     parser.add_argument("dataset_name", help="Name of the dataset e.g. yelp", 
-                        choices=["yelp"], type=str)
+                        choices=["yelp", "amazon"], type=str)
     args = parser.parse_args()
 
     data_dir = args.data_dir
