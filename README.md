@@ -134,7 +134,7 @@ Number of test reviews 135136(0.0800005683204001%)
 ``` bash
 python dataset_analysis/to_sentences_tokens.py ../amazon amazon
 ```
-Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 40 as there are so few review sentences greater than this (2.48%). To do this run the following command:
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 50 as there are so few review sentences greater than this (2.48%). To do this run the following command:
 ``` bash
 python dataset_analysis/filter_by_sentence_length.py ../amazon yelp_sentences 3 50
 ```
@@ -156,7 +156,7 @@ command:
 
 
 ``` bash
-allennlp evaluate --cuda-device -1 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 512, "batch_size": 128 }}}' transformer-elmo-2019.01.10.tar.gz 1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/news.en-00000-of-00100
+allennlp evaluate --cuda-device -0 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 512, "batch_size": 128 }}}' transformer-elmo-2019.01.10.tar.gz 1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled/news.en-00000-of-00100
 ```
 Did not find it any quicker to have more of the data in memory nor did the perplexity measure change.
 
@@ -171,7 +171,7 @@ python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/amazon_lm_v
 Where `../amazon_lm_vocab` is a new directory that stores only the vocabulary files, of which the vocabulary that will be used can be found here `../amazon_lm_vocab/tokens.txt`.
 
 #### Train model
-To train the model run the following command (This will take a long time around 49 hours on a 1060 6GB GPU):
+To train the model run the following command (This will take a long time around 63 hours on a 1060 6GB GPU):
 ```
 allennlp train fine_tune_lm/training_configs/amazon_lm_config.json -s ../amazon_language_model_save_large
 ```
@@ -179,7 +179,20 @@ Where `../amazon_language_model_save_large` is the directory that will save the 
 
 We got a perplexity score of 24.78 perplexity which is a loss of 3.21.
 
-We currently find that using the pre-trained model does not help at first but within 1 hour of training the perplexity decreases quicker suggesting that model finds it easier to learn more quickily through pre-training.
+We did not do any quick test to see the difference of using a pre-trained model and not.
+
+#### Evaluate the model
+To evaluate the model we shall use the Amazon filterted test split which you should be able to find here if you followed the previous steps `../amazon/filtered_split_test.txt` and to evaluate you run the following command (This again will take around 1 hours 15 minutes on a 1060 6GB GPU):
+``` bash
+allennlp evaluate --cuda-device 0 ../amazon_language_model_save_large/model.tar.gz ../amazon/filtered_split_test.txt
+```
+We achieved a perplexity of 29.15 which is a loss of 3.37 (3.3725986638315453) which is close to the training loss. We now compare that to the non-fine tuned model which was trained on the 1 billion word corpus which came from news data, to do this run the following command:
+``` bash
+allennlp evaluate --cuda-device -0 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 300], "max_instances_in_memory": 16384, "batch_size": 512 }}}' ../transformer-elmo-2019.01.10.tar.gz ../amazon/filtered_split_test.txt
+```
+This will take longer to run (4 hours 30 minutes on a 1060 6GB GPU) as it has a much larger vocabulary therefore a much large softmax layer to compute within the neural network. We got a loss of 4.70 (4.7040290288591615) which is a perplexity score of 110.39. 
+
+As we can see fine tunning to the dataset has made large difference with respect to the language model score.
 
 ### Yelp Restaurant Review dataset
 Assuming that you have created `filtered_split_train.txt`, `filtered_split_val.txt`, and `filtered_split_test.txt` from the previous sections, we will use these datasets to fine tune the model. First we must create a new output vocabulary for the Transformer ELMo model to do this easily use the following command:
@@ -206,7 +219,7 @@ allennlp evaluate --cuda-device 0 ../yelp_language_model_save_large/model.tar.gz
 ```
 We achieved a perplexity of 24.53 which is a loss of 3.20 (3.207513492262822) which is almost identical to the training loss. We now compare that to the non-fine tuned model which was trained on the 1 billion word corpus which came from news data, to do this run the following command:
 ``` bash
-allennlp evaluate --cuda-device -1 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 300], "max_instances_in_memory": 16384, "batch_size": 512 }}}' ../transformer-elmo-2019.01.10.tar.gz ../yelp/splits/filtered_split_test.txt
+allennlp evaluate --cuda-device -0 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 300], "max_instances_in_memory": 16384, "batch_size": 512 }}}' ../transformer-elmo-2019.01.10.tar.gz ../yelp/splits/filtered_split_test.txt
 ```
 This will take longer to run (10 hours 45 minutes on a 1060 6GB GPU) as it has a much larger vocabulary therefore a much large softmax layer to compute within the neural network. We got a loss of 4.61 (4.612278219667751) which is a perplexity score of 100.71. 
 
