@@ -226,3 +226,34 @@ This will take longer to run (10 hours 45 minutes on a 1060 6GB GPU) as it has a
 As we can see fine tunning to the dataset has made large difference with respect to the language model score.
 
 Other suggestion for training better with a pre-trained model would be to use something like the [ULMFit model](https://arxiv.org/pdf/1801.06146.pdf) as currently we are using a learning rate schduler that is similar in warm up and decreasing but it does not care about the different layers i.e. does not freeze any of the layers at different epochs nor does it have a different learning rate for different layers all of this could be important for us. We have also not looked at the best learning rate which we could do through [fine learning rate](https://allenai.github.io/allennlp-docs/api/allennlp.commands.find_learning_rate.html?highlight=learning#module-allennlp.commands.find_learning_rate) which is based on the training data and batches. To find the number of parameter groups for the ULMFit model see [this](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#sphx-glr-beginner-blitz-neural-networks-tutorial-py)
+
+# Target Extraction 
+Now that we have a training set for both Restaurants and Laptops we are going to sub-sample these into datasets that contain only 1 million sentences each, these randomly sub-sampled datasets can be create using the following script:
+``` bash
+python dataset_analysis/subsample_sentence.py ../yelp/splits/filtered_split_train.txt ../yelp/splits/sub_filtered_split_train.txt 1000000
+python dataset_analysis/subsample_sentence.py ../amazon/filtered_split_train.txt ../amazon/sub_filtered_split_train.txt 1000000
+```
+
+Now we have done this we need to train a TargetExtraction model for both datasets. We are going to use the following datasets:
+1. [SemEval 2014 task 4 Laptop domain (laptop)](http://alt.qcri.org/semeval2014/task4/). Of which the training data can be found [here](http://metashare.ilsp.gr:8080/repository/browse/semeval-2014-absa-train-data-v20-annotation-guidelines/683b709298b811e3a0e2842b2b6a04d7c7a19307f18a4940beef6a6143f937f0/) and the test data [here](http://metashare.ilsp.gr:8080/repository/browse/semeval-2014-absa-test-data-gold-annotations/b98d11cec18211e38229842b2b6a04d77591d40acd7542b7af823a54fb03a155/).
+2. [SemEval 2014 task 4 Restaurant domain (restaurant_14)](http://alt.qcri.org/semeval2014/task4/). Of which the training and the test data can be found at the same place as the laptop dataset.
+
+We shall also use the Domain Specific language models that we have created here as well as the Glove 300D general word embedding as the word representations for the Bi-LSTM with CRF decoding. First before training the models we need to split them into train, validation and test splits using the following script:
+``` bash
+python dataset_analysis/TDSA_create_splits.py ../original_target_datasets/semeval_2014/SemEval\'14-ABSA-TrainData_v2\ \&\ AnnotationGuidelines/Laptop_Train_v2.xml ../original_target_datasets/semeval_2014/ABSA_Gold_TestData/Laptops_Test_Gold.xml semeval_2014 ../original_target_datasets/semeval_2014/laptop_json/train.json ../original_target_datasets/semeval_2014/laptop_json/val.json ../original_target_datasets/semeval_2014/laptop_json/test.json
+python dataset_analysis/TDSA_create_splits.py ../original_target_datasets/semeval_2014/SemEval\'14-ABSA-TrainData_v2\ \&\ AnnotationGuidelines/Restaurants_Train_v2.xml ../original_target_datasets/semeval_2014/ABSA_Gold_TestData/Restaurants_Test_Gold.xml semeval_2014 ../original_target_datasets/semeval_2014/restaurant_json/train.json ../original_target_datasets/semeval_2014/restaurant_json/val.json ../original_target_datasets/semeval_2014/restaurant_json/test.json
+```
+
+Then to train the models run the following:
+``` bash
+allennlp train TDSA_configs/ELMO_Laptop.jsonnet -s TDSA_Models/Laptop --include-package target_extraction
+```
+The Laptop dataset you should have an F1 score of 0.852 and 0.837 for test and validation sets.
+The 
+
+This should create two more models files both stored at the following ``
+
+Now we want to create a file that will contain all of the predicted Targets, by running the following command:
+``` bash
+python dataset_analysis/predict_targets.py TDSA_Models/Laptop/ TDSA_configs/ELMO_Laptop.jsonnet ../amazon/sub_filtered_split_train.txt ../amazon/predicted_targets_train.txt
+```

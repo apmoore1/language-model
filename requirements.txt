@@ -1,3 +1,4 @@
 bella-tdsa
 allennlp
 pylint
+-e git://github.com/apmoore1/target-extraction.git@master#egg=target-extraction
