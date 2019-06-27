@@ -247,13 +247,15 @@ python dataset_analysis/TDSA_create_splits.py ../original_target_datasets/semeva
 Then to train the models run the following:
 ``` bash
 allennlp train TDSA_configs/ELMO_Laptop.jsonnet -s TDSA_Models/Laptop --include-package target_extraction
+allennlp train TDSA_configs/ELMO_Restaurant.jsonnet -s TDSA_Models/Restaurant --include-package target_extraction
 ```
 The Laptop dataset you should have an F1 score of 0.852 and 0.837 for test and validation sets.
-The 
+The Laptop dataset you should have an F1 score of 0.881 and 0.850 for test and validation sets.
 
 This should create two more models files both stored at the following ``
 
 Now we want to create a file that will contain all of the predicted Targets, by running the following command:
 ``` bash
 python dataset_analysis/predict_targets.py TDSA_Models/Laptop/ TDSA_configs/ELMO_Laptop.jsonnet ../amazon/sub_filtered_split_train.txt ../amazon/predicted_targets_train.txt
+python dataset_analysis/predict_targets.py TDSA_Models/Restaurant/ TDSA_configs/ELMO_Restaurant.jsonnet ../yelp/splits/sub_filtered_split_train.txt ../yelp/splits/predicted_targets_train.txt
 ```
