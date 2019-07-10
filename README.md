@@ -134,7 +134,7 @@ Number of test reviews 135136(0.0800005683204001%)
 ``` bash
 python dataset_analysis/to_sentences_tokens.py ../amazon amazon
 ```
-Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Yelp sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 50 as there are so few review sentences greater than this (2.48%). To do this run the following command:
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the Amazon sentences dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 50 as there are so few review sentences greater than this (2.48%). To do this run the following command:
 ``` bash
 python dataset_analysis/filter_by_sentence_length.py ../amazon yelp_sentences 3 50
 ```
@@ -145,10 +145,45 @@ python dataset_analysis/data_stats.py ../amazon/filtered_split_val.txt yelp_sent
 python dataset_analysis/data_stats.py ../amazon/filtered_split_test.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/amazon_filtered_test.png
 ```
 We find that the:
-1. Training set has a mean sentence length of 18.06 (9.81) with 9,580,995 sentences and 182,900 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_training.png).
-2. Validation set has a mean sentence length of 18.03 (9.81) with 907,343 sentences and 47,255 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_validation.png).
-3. Test set has a mean sentence length of 18.07 (9.83) with 905,555 sentences and 47,178 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/yelp_filtered_test.png).
+1. Training set has a mean sentence length of 18.06 (9.81) with 9,580,995 sentences and 182,900 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/amazon_filtered_training.png).
+2. Validation set has a mean sentence length of 18.03 (9.81) with 907,343 sentences and 47,255 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/amazon_filtered_validation.png).
+3. Test set has a mean sentence length of 18.07 (9.83) with 905,555 sentences and 47,178 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/amazon_filtered_test.png).
 As we can see the sentence lengths and standard devations are very similar across the splits. 
+
+## MP Twitter data
+The MP Twitter data is created using the following GitHub Repositroy. The data contains 2,464,909 Tweets, these Tweets are found on this computer here `../MP-Tweets/all_mp_data.json`. We now need to create Train, Validation, and Test datasets for the Language Model to be trained on.
+``` bash
+python dataset_analysis/create_train_val_test.py ../MP-Tweets/all_mp_data.json ../MP-Tweets/ mp
+```
+Number of training reviews 2070523(0.8399997728110855%)
+Number of validation reviews 197193(0.08000011359445725%)
+Number of test reviews 197193(0.08000011359445725%)
+``` bash
+python dataset_analysis/to_sentences_tokens.py ../MP-Tweets/ mp
+```
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the MP tweets dataset so that it only includes sentences that are at least 4 tokens long. We will also restrict the maximum sentence length to 60 as there are so few review sentences greater than this (2.23%). To do this run the following command:
+``` bash
+python dataset_analysis/filter_by_sentence_length.py ../MP-Tweets yelp_sentences 4 60
+```
+```
+python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_train.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/mp_filtered_training.png
+python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_val.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/mp_filtered_validation.png
+python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_test.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/mp_filtered_test.png
+```
+We find that the:
+1. Training set has a mean sentence length of 24.92 (15.36) with 1,998,250 sentences and 198,298 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_training.png).
+2. Validation set has a mean sentence length of 24.90 (15.35) with 190,302 sentences and 49,525 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_validation.png).
+3. Test set has a mean sentence length of 24.81 (15.33) with 190,262 sentences and 49,232 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_test.png).
+As we can see the sentence lengths and standard devations are very similar across the splits. 
+
+### Training the Transformer ELMo model from scratch for MP Tweets
+``` bash
+python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/mp_lm_vocab_create_config.json ../mp_lm_vocab
+```
+Started at 23.40 10/7/19
+``` bash
+allennlp train fine_tune_lm/training_configs/mp_lm_config.json -s ../mp_language_model_save_large
+```
 
 ## How to run the Transformer ELMo model
 

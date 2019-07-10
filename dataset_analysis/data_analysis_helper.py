@@ -20,6 +20,15 @@ def amazon_text_generator(amazon_fp: Path) -> Iterable[str]:
                 review_text = review['reviewText']
                 yield review_text
 
+def mp_text_generator(mp_fp: Path) -> Iterable[str]:
+    with mp_fp.open('r') as mp_file:
+        for line in mp_file:
+            line = line.strip()
+            if line:
+                tweet = json.loads(line)
+                text = tweet['text']
+                yield text
+
 def sentence_text_generator(data_fp: Path) -> Iterable[str]:
     with data_fp.open('r') as data_file:
         for line in data_file:
@@ -35,6 +44,8 @@ def text_generator_func_mapper(review_data_name: str) -> Callable[[Path], Iterab
         return sentence_text_generator
     elif review_data_name == 'amazon':
         return amazon_text_generator
+    elif review_data_name == 'mp':
+        return mp_text_generator
     else:
         raise ValueError('Do not have a text generator function for the '
                          f'{review_data_name} review data')

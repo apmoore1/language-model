@@ -23,11 +23,17 @@ def review_id_data(review_fp: Path, dataset_name: str
                 review = json.loads(line)
                 review_id = review['review_id']
                 yield review_id, review
-    else:
+    elif dataset_name == 'amazon':
         with review_fp.open('r') as review_data:
             for index, line in enumerate(review_data):
                 review = eval(line)
                 review_id = review['reviewerID'] + review['asin'] + str(index)
+                yield review_id, review
+    elif dataset_name == 'mp':
+        with review_fp.open('r') as review_data:
+            for line in review_data:
+                review = json.loads(line)
+                review_id = review['id']
                 yield review_id, review
 
 #def review_id_tokens(yelp_review_fp: Path, 
@@ -147,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument("--rewrite", help=rewrite_help, action="store_true")
     parser.add_argument("data_dir", type=parse_path, 
                         help=data_dir_help)
-    parser.add_argument('dataset_name', type=str, choices=['yelp', 'amazon'])
+    parser.add_argument('dataset_name', type=str, choices=['yelp', 'amazon', 'mp'])
     parser.add_argument("--min_token_count", help=min_token_count_help, 
                         type=int)
     parser.add_argument("--filter_by_business_ids", type=parse_path, 
@@ -172,8 +178,10 @@ if __name__ == '__main__':
         if not args.filter_by_business_ids:
             if args.dataset_name == 'yelp':
                 expected_num_reviews = 6685900
-            else:
+            elif args.dataset_name == 'amazon':
                 expected_num_reviews = 1689188
+            elif args.dataset_name == 'mp':
+                expected_num_reviews = 2464909
             test_val_num_reviews = math.ceil(expected_num_reviews * 0.08)
             review_counts = set([i for i in range(expected_num_reviews)])
         

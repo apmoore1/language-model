@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     model = AllenNLPModel('ELMO model', args.model_param_path, 'target-tagger', 
                           args.model_file_path)
-    model.load()
+    model.load(cuda_device=0)
     count = 0
     overall_count = 0
     from time import time
