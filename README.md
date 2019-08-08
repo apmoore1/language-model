@@ -180,10 +180,22 @@ As we can see the sentence lengths and standard devations are very similar acros
 ``` bash
 python fine_tune_lm/create_lm_vocab.py fine_tune_lm/training_configs/mp_lm_vocab_create_config.json ../mp_lm_vocab
 ```
-Started at 23.40 10/7/19
+Takes about 29 hours and 20 minutes using a 1060 6GB GPU
 ``` bash
 allennlp train fine_tune_lm/training_configs/mp_lm_config.json -s ../mp_language_model_save_large
 ```
+
+To evaluate (Takes around 25 minutes with a 1060 6GB GPU)
+``` bash
+allennlp evaluate --cuda-device 0 ../mp_language_model_save_large/model.tar.gz ../MP-Tweets/filtered_split_test.txt
+```
+Loss of 4.43(4.42753777283953)  which is a perplexity of 83.73
+
+To evaluare using the language model trained on the one billion word corpus use the following command takes around 2 hours on a 1060 6GB GPU.
+``` bash
+allennlp evaluate --cuda-device -0 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 8192, "batch_size": 128 }}}' ../transformer-elmo-2019.01.10.tar.gz ../MP-Tweets/filtered_split_test.txt
+```
+Loss of 5.35(5.354208643099716)  which is a perplexity of 211.5
 
 ## How to run the Transformer ELMo model
 
@@ -262,6 +274,20 @@ As we can see fine tunning to the dataset has made large difference with respect
 
 Other suggestion for training better with a pre-trained model would be to use something like the [ULMFit model](https://arxiv.org/pdf/1801.06146.pdf) as currently we are using a learning rate schduler that is similar in warm up and decreasing but it does not care about the different layers i.e. does not freeze any of the layers at different epochs nor does it have a different learning rate for different layers all of this could be important for us. We have also not looked at the best learning rate which we could do through [fine learning rate](https://allenai.github.io/allennlp-docs/api/allennlp.commands.find_learning_rate.html?highlight=learning#module-allennlp.commands.find_learning_rate) which is based on the training data and batches. To find the number of parameter groups for the ULMFit model see [this](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#sphx-glr-beginner-blitz-neural-networks-tutorial-py)
 
+# Word Vectors
+To compare to the language models we are going to create domain sepcific word embeddings. First of all we are going to create two types:
+1. Word embeddings where each token is represented by a word vector
+2. Word embedding where we handle multi-word expressions (MWE) using [Normalised (Pointwise) Mutual Information](https://svn.spraakdata.gu.se/repos/gerlof/pub/www/Docs/npmi-pfd.pdf) to find MWEs.
+
+The reason for the two types is so that the first can be used to compare fairly against a domain sepcific Contextualised Word Embedding (CWE) that has been created using the ELMo language model described here using the same data.
+
+We are going to train both of these embeddings using the same training data that is used to train the language models. The second word embedding will use MWE up to length 3 as fewer than 5% of the targets in the training data are longer than 3 words [see this notebook for those details](https://github.com/apmoore1/target-extraction/blob/master/tutorials/Load_and_Explore_Target_Extraction.ipynb).
+
+All of the word vectors are 300 dimension Word2Vec Skip Gram vectors that have been trained for 5 epochs with 5 negative samples as per the default configurations in the [Gensim package](https://radimrehurek.com/gensim/models/word2vec.html).
+``` bash
+./word_embeddings/create_embeddings.sh
+```
+
 # Target Extraction 
 Now that we have a training set for both Restaurants and Laptops we are going to sub-sample these into datasets that contain only 1 million sentences each, these randomly sub-sampled datasets can be create using the following script:
 ``` bash
@@ -285,7 +311,7 @@ allennlp train TDSA_configs/ELMO_Laptop.jsonnet -s TDSA_Models/Laptop --include-
 allennlp train TDSA_configs/ELMO_Restaurant.jsonnet -s TDSA_Models/Restaurant --include-package target_extraction
 ```
 The Laptop dataset you should have an F1 score of 0.852 and 0.837 for test and validation sets.
-The Laptop dataset you should have an F1 score of 0.881 and 0.850 for test and validation sets.
+The Restaurant dataset you should have an F1 score of 0.881 and 0.850 for test and validation sets.
 
 This should create two more models files both stored at the following ``
 
