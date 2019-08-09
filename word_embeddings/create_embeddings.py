@@ -78,7 +78,7 @@ def creating_embeddings(text_file: Path,
                     phrase_tokens = phrases[tokens]
                     new_tokens_file.write(' '.join(phrase_tokens))
             phrases.save(str(phrase_fp.resolve()))
-            all_tokens = TokenIter(new_tokens_file, lower=lower)
+            all_tokens = TokenIter(new_tokens_fp, lower=lower)
         token_generator = all_tokens
 
     embedding_model = embedding_class(token_generator, **embedding_kwargs)
