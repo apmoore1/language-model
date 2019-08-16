@@ -11,26 +11,12 @@ from typing import Iterable, List, Optional, Callable
 
 from spacy.lang.en import English
 from spacy.language import Language as SpacyModelType
-import twokenize
+from target_extraction.tokenizers import spacy_tokenizer
 
 import helper
 from data_analysis_helper import yelp_text_generator, text_generator_func_mapper
 
 SPACY_MODEL = {}
-
-def ark_twokenize(text: str) -> List[str]:
-    '''
-    A Twitter tokeniser from
-    `CMU Ark <https://github.com/brendano/ark-tweet-nlp>`_
-    This is a wrapper of
-    `this <https://github.com/Sentimentron/ark-twokenize-py>`_
-    :param text: A string to be tokenised.
-    :returns: A list of tokens where each token is a String.
-    '''
-
-    if isinstance(text, str):
-        return twokenize.tokenizeRawTweetText(text)
-    raise ValueError(f'The paramter must be of type str not {type(text)}')
 
 def get_sentence_spitter() -> SpacyModelType:
     if 'english' not in SPACY_MODEL:
@@ -60,21 +46,13 @@ def sentence_token_generator(text: str) -> Iterable[str]:
     except:
         print(f'Text that Spacy cannot parse {text}\nThis text will not be included.')
 
-def tweet_token_generator(text: str) -> Iterable[str]:
-    '''
-    Given some text that can contain multiple sentences it breaks the document
-    into sentences, tokenises the sentence and yields each sentence where the 
-    original tokenisation can be found by splitting on whitespace.
-
-    Tokenisation and sentence splitting done by spacy.
-    '''
-    return ' '.join(ark_twokenize(text))
-
 def split_save_tweets(text_generator_func: Callable[[Path], Iterable[str]], 
                        review_data_dir: Path, 
                        split_names: Optional[List[str]] = None) -> None:
     split_names = split_names or ['train.json', 'val.json', 'test.json']
     save_split_names = ['split_train.txt', 'split_val.txt', 'split_test.txt']
+
+    tokenizer = spacy_tokenizer()
 
     for split_name, save_split_name in zip(split_names, save_split_names):
         split_fp = Path(review_data_dir, split_name).resolve()
@@ -83,7 +61,7 @@ def split_save_tweets(text_generator_func: Callable[[Path], Iterable[str]],
         count = 0
         with save_split_fp.open('w+') as save_split_file:
             for tweet in text_generator_func(split_fp):
-                tweet = tweet_token_generator(tweet)
+                tweet = ' '.join(tokenizer(tweet))
                 if count != 0:
                     tweet = f'\n{tweet}'
                 save_split_file.write(tweet)

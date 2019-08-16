@@ -29,6 +29,7 @@ I think the next step would be to just split the yelp dataset into train, val an
 The next step after that would be to look at the size of the dataset by the token size where we will split based on whitespace. Then I think we will look into which model to use as the TransformerXL from what I have just gathered only uses token level information and does not encode any characters which is problematic.
 
 # Getting the data and models
+ALL DATA HERE IS TOKENIZED USING SPACY!
 ## Target Dependent Sentiment Analysis (TDSA) data
 ### Getting the data and converting it into Train, Validation, and Test sets
 
@@ -161,9 +162,9 @@ Number of test reviews 197193(0.08000011359445725%)
 ``` bash
 python dataset_analysis/to_sentences_tokens.py ../MP-Tweets/ mp
 ```
-Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the MP tweets dataset so that it only includes sentences that are at least 4 tokens long. We will also restrict the maximum sentence length to 60 as there are so few review sentences greater than this (2.23%). To do this run the following command:
+Based on the [data statistics](./dataset_analysis/README.md) we are going to further filter the MP tweets dataset so that it only includes sentences that are at least 3 tokens long. We will also restrict the maximum sentence length to 60 as there are so few review sentences greater than this (3.98%). To do this run the following command:
 ``` bash
-python dataset_analysis/filter_by_sentence_length.py ../MP-Tweets yelp_sentences 4 60
+python dataset_analysis/filter_by_sentence_length.py ../MP-Tweets yelp_sentences 3 60
 ```
 ```
 python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_train.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/mp_filtered_training.png
@@ -171,9 +172,9 @@ python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_val.txt yelp_s
 python dataset_analysis/data_stats.py ../MP-Tweets/filtered_split_test.txt yelp_sentences --sentence_length_distribution ./images/sentence_distributions/mp_filtered_test.png
 ```
 We find that the:
-1. Training set has a mean sentence length of 24.92 (15.36) with 1,998,250 sentences and 198,298 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_training.png).
-2. Validation set has a mean sentence length of 24.90 (15.35) with 190,302 sentences and 49,525 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_validation.png).
-3. Test set has a mean sentence length of 24.81 (15.33) with 190,262 sentences and 49,232 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_test.png).
+1. Training set has a mean sentence length of 25.28 (15.52) with 1,980,600 sentences and 180,501 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_training.png).
+2. Validation set has a mean sentence length of 25.24 (15.53) with 188,552 sentences and 46,707 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_validation.png).
+3. Test set has a mean sentence length of 25.22 (15.51) with 188,417 sentences and 46,769 tokens that occur at least 3 times. Distribution of the sentence lengths can be found [here](./images/sentence_distributions/mp_filtered_test.png).
 As we can see the sentence lengths and standard devations are very similar across the splits. 
 
 ### Training the Transformer ELMo model from scratch for MP Tweets
