@@ -190,13 +190,13 @@ To evaluate (Takes around 25 minutes with a 1060 6GB GPU)
 ``` bash
 allennlp evaluate --cuda-device 0 ../mp_language_model_save_large/model.tar.gz ../MP-Tweets/filtered_split_test.txt
 ```
-Loss of 4.43(4.42753777283953)  which is a perplexity of 83.73
+Loss of 4.28(4.281530955097563)  which is a perplexity of 72.35
 
 To evaluare using the language model trained on the one billion word corpus use the following command takes around 2 hours on a 1060 6GB GPU.
 ``` bash
 allennlp evaluate --cuda-device -0 -o '{"iterator": {"base_iterator": {"maximum_samples_per_batch": ["num_tokens", 500], "max_instances_in_memory": 8192, "batch_size": 128 }}}' ../transformer-elmo-2019.01.10.tar.gz ../MP-Tweets/filtered_split_test.txt
 ```
-Loss of 5.35(5.354208643099716)  which is a perplexity of 211.5
+Loss of 5.32(5.322864265508469)  which is a perplexity of 204.97
 
 ## How to run the Transformer ELMo model
 
@@ -304,20 +304,29 @@ We shall also use the Domain Specific language models that we have created here 
 ``` bash
 python dataset_analysis/TDSA_create_splits.py ../original_target_datasets/semeval_2014/SemEval\'14-ABSA-TrainData_v2\ \&\ AnnotationGuidelines/Laptop_Train_v2.xml ../original_target_datasets/semeval_2014/ABSA_Gold_TestData/Laptops_Test_Gold.xml semeval_2014 ../original_target_datasets/semeval_2014/laptop_json/train.json ../original_target_datasets/semeval_2014/laptop_json/val.json ../original_target_datasets/semeval_2014/laptop_json/test.json
 python dataset_analysis/TDSA_create_splits.py ../original_target_datasets/semeval_2014/SemEval\'14-ABSA-TrainData_v2\ \&\ AnnotationGuidelines/Restaurants_Train_v2.xml ../original_target_datasets/semeval_2014/ABSA_Gold_TestData/Restaurants_Test_Gold.xml semeval_2014 ../original_target_datasets/semeval_2014/restaurant_json/train.json ../original_target_datasets/semeval_2014/restaurant_json/val.json ../original_target_datasets/semeval_2014/restaurant_json/test.json
+python dataset_analysis/TDSA_create_splits.py --remove_errors not_valid.txt not_valid.txt election_twitter ../original_target_datasets/election/train.json ../original_target_datasets/election/val.json ../original_target_datasets/election/test.json
 ```
 
 Then to train the models run the following:
 ``` bash
 allennlp train TDSA_configs/ELMO_Laptop.jsonnet -s TDSA_Models/Laptop --include-package target_extraction
 allennlp train TDSA_configs/ELMO_Restaurant.jsonnet -s TDSA_Models/Restaurant --include-package target_extraction
+allennlp train TDSA_configs/ELMO_MP.jsonnet -s TDSA_Models/MP --include-package target_extraction
 ```
 The Laptop dataset you should have an F1 score of 0.852 and 0.837 for test and validation sets.
 The Restaurant dataset you should have an F1 score of 0.881 and 0.850 for test and validation sets.
+The Election Twitter dataset you should have an F1 score of 0.894 and 0.892 for test and validation sets.
 
-This should create two more models files both stored at the following ``
+Before we predict the targets for the large filtered un-labelled training data we are going to sub-sample to save computational costs. We are only going to use a 1,000,000 sentences:
+```
+python dataset_analysis/subsample_sentence.py ../amazon/filtered_split_train.txt ../amazon/sub_filtered_split_train.txt 1000000
+python dataset_analysis/subsample_sentence.py ../yelp/splits/filtered_split_train.txt ../yelp/splits/sub_filtered_split_train.txt 1000000
+python dataset_analysis/subsample_sentence.py ../MP-Tweets/filtered_split_train.txt ../MP-Tweets/sub_filtered_split_train.txt 1000000
+```
 
-Now we want to create a file that will contain all of the predicted Targets, by running the following command:
+Now we are going to predict targets on these sub-sampled 1,000,000 sentence files, by running the following command:
 ``` bash
 python dataset_analysis/predict_targets.py TDSA_Models/Laptop/ TDSA_configs/ELMO_Laptop.jsonnet ../amazon/sub_filtered_split_train.txt ../amazon/predicted_targets_train.txt
 python dataset_analysis/predict_targets.py TDSA_Models/Restaurant/ TDSA_configs/ELMO_Restaurant.jsonnet ../yelp/splits/sub_filtered_split_train.txt ../yelp/splits/predicted_targets_train.txt
+python dataset_analysis/predict_targets.py TDSA_Models/MP/ TDSA_configs/ELMO_MP.jsonnet ../MP-Tweets/sub_filtered_split_train.txt ../MP-Tweets/predicted_targets_train.txt
 ```

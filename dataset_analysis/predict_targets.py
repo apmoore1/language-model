@@ -16,7 +16,7 @@ def token_iter(fp: Path) -> Iterable[Dict[str, List[str]]]:
             line = line.strip()
             if line:
                 tokens = line.split()
-                yield {'tokens': tokens}
+                yield {'tokens': tokens, 'text': line}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
