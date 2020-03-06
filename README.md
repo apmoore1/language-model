@@ -152,7 +152,7 @@ We find that the:
 As we can see the sentence lengths and standard devations are very similar across the splits. 
 
 ## MP Twitter data
-The MP Twitter data is created using the following GitHub Repositroy. The data contains 2,464,909 Tweets, these Tweets are found on this computer here `../MP-Tweets/all_mp_data.json`. We now need to create Train, Validation, and Test datasets for the Language Model to be trained on.
+The MP Twitter data is created using the following GitHub Repositroy. The data contains 2,464,909 Tweets, these Tweets are found on this computer here `../MP-Tweets/all_mp_data.json`. The Tweets were collected from June the 7th 2019 to July the 10th 2019, these tweets are all tweets that mention 1 of the 399 verified MP Twitter handles. These 399 MPs were chosen as they were the top 399 MP on Twitter based on the number of followers (this was found through the following [website](https://www.mpsontwitter.co.uk/list)). We now need to create Train, Validation, and Test datasets for the Language Model to be trained on.
 ``` bash
 python dataset_analysis/create_train_val_test.py ../MP-Tweets/all_mp_data.json ../MP-Tweets/ mp
 ```
