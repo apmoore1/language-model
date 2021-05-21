@@ -275,6 +275,15 @@ As we can see fine tunning to the dataset has made large difference with respect
 
 Other suggestion for training better with a pre-trained model would be to use something like the [ULMFit model](https://arxiv.org/pdf/1801.06146.pdf) as currently we are using a learning rate schduler that is similar in warm up and decreasing but it does not care about the different layers i.e. does not freeze any of the layers at different epochs nor does it have a different learning rate for different layers all of this could be important for us. We have also not looked at the best learning rate which we could do through [fine learning rate](https://allenai.github.io/allennlp-docs/api/allennlp.commands.find_learning_rate.html?highlight=learning#module-allennlp.commands.find_learning_rate) which is based on the training data and batches. To find the number of parameter groups for the ULMFit model see [this](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html#sphx-glr-beginner-blitz-neural-networks-tutorial-py)
 
+## CWR Model Zoo
+
+All of the CWR models can be found at the following URL [https://ucrel-web.lancs.ac.uk/moorea/research/phd_thesis/resources/CWR/](https://ucrel-web.lancs.ac.uk/moorea/research/phd_thesis/resources/CWR/). To summaries: 
+  
+1. The MP Twitter CWR (called `election_model.tar.gz` at the URL address) has been completely fine tuned from scratch on the MP Twitter data. MP Twiiter fine tuning dataset has a mean sentence length of 25.28 (15.52) with 1,980,600 sentences. The model was trained for five epochs, thus fine tuned on 9,903,000 sentences.
+2. The Amazon CWR (called `laptop_model.tar.gz` at the URL address) has first been intitalised with the pre-trained weights from the 1 Billion word corpus Transformer ELMo language model and then fine-tuned on the Amazon electronics data. Amazon fine tuning dataset has a mean sentence length of 18.06 (9.81) with 9,580,995 sentences. The model was trained for three epochs, thus fine tuned on 28,742,985 sentences.   
+3. The Yelp CWR (called `restaurant_model.tar.gz` at the URL address) has first been intitalised with the pre-trained weights from the 1 Billion word corpus Transformer ELMo language model and then fine-tuned on the 2019 Yelp data. Yelp fine tuning dataset has a mean sentence length of 14.78 (8.02) with 27,286,698 sentences. The model was trained for one epoch, thus fine tuned on 27,286,698 sentences. 
+
+  
 # Word Vectors
 To compare to the language models we are going to create domain sepcific word embeddings. First of all we are going to create two types:
 1. Word embeddings where each token is represented by a word vector
